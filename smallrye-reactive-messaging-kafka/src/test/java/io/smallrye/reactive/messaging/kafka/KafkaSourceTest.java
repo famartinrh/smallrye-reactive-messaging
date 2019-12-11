@@ -13,6 +13,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.reactive.messaging.Headers;
 import org.eclipse.microprofile.reactive.messaging.Message;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
@@ -177,6 +178,29 @@ public class KafkaSourceTest extends KafkaTestBase {
         });
     }
 
+    @Test
+    public void testABeanConsumingTheKafkaMessagesWithRawMessage() {
+        ConsumptionBeanUsingRawMessage bean = deployRaw(myKafkaSourceConfig());
+        KafkaUsage usage = new KafkaUsage();
+        List<Integer> list = bean.getResults();
+        assertThat(list).isEmpty();
+        AtomicInteger counter = new AtomicInteger();
+        new Thread(() -> usage.produceIntegers(10, null,
+                () -> new ProducerRecord<>("data", counter.getAndIncrement()))).start();
+
+        await().atMost(2, TimeUnit.MINUTES).until(() -> list.size() >= 10);
+        assertThat(list).containsExactly(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
+        List<Message<Integer>> messages = bean.getKafkaMessages();
+        messages.forEach(m -> {
+            Headers headers = m.getHeaders();
+            assertThat(headers.getAsString(KafkaHeaders.TOPIC, null)).isEqualTo("data");
+            assertThat(headers.getAsLong(KafkaHeaders.TIMESTAMP, -1L)).isGreaterThan(0);
+            assertThat(headers.getAsInteger(KafkaHeaders.PARTITION, -1)).isGreaterThan(-1);
+            assertThat(headers.getAsInteger(KafkaHeaders.OFFSET, -1)).isGreaterThan(-1);
+        });
+    }
+
     private ConsumptionBean deploy(MapBasedConfig config) {
         Weld weld = baseWeld();
         addConfig(config);
@@ -184,6 +208,15 @@ public class KafkaSourceTest extends KafkaTestBase {
         weld.disableDiscovery();
         container = weld.initialize();
         return container.getBeanManager().createInstance().select(ConsumptionBean.class).get();
+    }
+
+    private ConsumptionBeanUsingRawMessage deployRaw(MapBasedConfig config) {
+        Weld weld = baseWeld();
+        addConfig(config);
+        weld.addBeanClass(ConsumptionBeanUsingRawMessage.class);
+        weld.disableDiscovery();
+        container = weld.initialize();
+        return container.getBeanManager().createInstance().select(ConsumptionBeanUsingRawMessage.class).get();
     }
 
 }
