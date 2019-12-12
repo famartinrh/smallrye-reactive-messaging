@@ -1,32 +1,5 @@
 package io.smallrye.reactive.messaging.amqp;
 
-import java.time.Instant;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.context.BeforeDestroyed;
-import javax.enterprise.event.Observes;
-import javax.enterprise.inject.Instance;
-import javax.inject.Inject;
-
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.reactive.messaging.Message;
-import org.eclipse.microprofile.reactive.messaging.spi.Connector;
-import org.eclipse.microprofile.reactive.messaging.spi.IncomingConnectorFactory;
-import org.eclipse.microprofile.reactive.messaging.spi.OutgoingConnectorFactory;
-import org.eclipse.microprofile.reactive.streams.operators.PublisherBuilder;
-import org.eclipse.microprofile.reactive.streams.operators.ReactiveStreams;
-import org.eclipse.microprofile.reactive.streams.operators.SubscriberBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.reactivex.Flowable;
 import io.vertx.amqp.AmqpClientOptions;
 import io.vertx.amqp.AmqpReceiverOptions;
@@ -38,6 +11,32 @@ import io.vertx.axle.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.reactivex.core.Vertx;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.reactive.messaging.Headers;
+import org.eclipse.microprofile.reactive.messaging.Message;
+import org.eclipse.microprofile.reactive.messaging.spi.Connector;
+import org.eclipse.microprofile.reactive.messaging.spi.IncomingConnectorFactory;
+import org.eclipse.microprofile.reactive.messaging.spi.OutgoingConnectorFactory;
+import org.eclipse.microprofile.reactive.streams.operators.PublisherBuilder;
+import org.eclipse.microprofile.reactive.streams.operators.ReactiveStreams;
+import org.eclipse.microprofile.reactive.streams.operators.SubscriberBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.BeforeDestroyed;
+import javax.enterprise.event.Observes;
+import javax.enterprise.inject.Instance;
+import javax.inject.Inject;
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicReference;
 
 @ApplicationScoped
 @Connector(AmqpConnector.CONNECTOR_NAME)
@@ -113,88 +112,88 @@ public class AmqpConnector implements IncomingConnectorFactory, OutgoingConnecto
         }
         try {
             String username = config.getOptionalValue("username", String.class)
-                    .orElseGet(() -> {
-                        if (this.configuredUsername != null) {
-                            return this.configuredUsername.orElse(null);
-                        } else {
-                            return null;
-                        }
-                    });
+                .orElseGet(() -> {
+                    if (this.configuredUsername != null) {
+                        return this.configuredUsername.orElse(null);
+                    } else {
+                        return null;
+                    }
+                });
             String password = config.getOptionalValue("password", String.class)
-                    .orElseGet(() -> {
-                        if (this.configuredPassword != null) {
-                            return this.configuredPassword.orElse(null);
-                        } else {
-                            return null;
-                        }
-                    });
+                .orElseGet(() -> {
+                    if (this.configuredPassword != null) {
+                        return this.configuredPassword.orElse(null);
+                    } else {
+                        return null;
+                    }
+                });
             String host = config.getOptionalValue("host", String.class)
-                    .orElseGet(() -> {
-                        if (this.configuredHost == null) {
-                            LOGGER.info("No AMQP host configured, using localhost");
-                            return "localhost";
-                        } else {
-                            return this.configuredHost;
-                        }
-                    });
+                .orElseGet(() -> {
+                    if (this.configuredHost == null) {
+                        LOGGER.info("No AMQP host configured, using localhost");
+                        return "localhost";
+                    } else {
+                        return this.configuredHost;
+                    }
+                });
 
             int port = config.getOptionalValue("port", Integer.class)
-                    .orElseGet(() -> {
-                        if (this.configuredPort == null) {
-                            return 5672;
-                        } else {
-                            return this.configuredPort;
-                        }
-                    });
+                .orElseGet(() -> {
+                    if (this.configuredPort == null) {
+                        return 5672;
+                    } else {
+                        return this.configuredPort;
+                    }
+                });
 
             boolean useSsl = config.getOptionalValue("use-ssl", Boolean.class)
-                    .orElseGet(() -> {
-                        if (this.configuredUseSsl == null) {
-                            return false;
-                        } else {
-                            return this.configuredUseSsl.orElse(Boolean.FALSE);
-                        }
-                    });
+                .orElseGet(() -> {
+                    if (this.configuredUseSsl == null) {
+                        return false;
+                    } else {
+                        return this.configuredUseSsl.orElse(Boolean.FALSE);
+                    }
+                });
 
             int reconnectAttempts = config.getOptionalValue("reconnect-attempts", Integer.class)
-                    .orElseGet(() -> {
-                        if (this.configuredReconnectAttempts == null) {
-                            return 100;
-                        } else {
-                            return this.configuredReconnectAttempts.get();
-                        }
-                    });
+                .orElseGet(() -> {
+                    if (this.configuredReconnectAttempts == null) {
+                        return 100;
+                    } else {
+                        return this.configuredReconnectAttempts.get();
+                    }
+                });
 
             long reconnectInterval = config.getOptionalValue("reconnect-interval", Long.class)
-                    .orElseGet(() -> {
-                        if (this.configuredReconnectInterval == null) {
-                            return 10L;
-                        } else {
-                            return this.configuredReconnectInterval.get();
-                        }
-                    });
+                .orElseGet(() -> {
+                    if (this.configuredReconnectInterval == null) {
+                        return 10L;
+                    } else {
+                        return this.configuredReconnectInterval.get();
+                    }
+                });
 
             int connectTimeout = config.getOptionalValue("connect-timeout", Integer.class)
-                    .orElseGet(() -> {
-                        if (this.configuredConnectTimeout == null) {
-                            return 1000;
-                        } else {
-                            return this.configuredConnectTimeout.get();
-                        }
-                    });
+                .orElseGet(() -> {
+                    if (this.configuredConnectTimeout == null) {
+                        return 1000;
+                    } else {
+                        return this.configuredConnectTimeout.get();
+                    }
+                });
 
             String containerId = config.getOptionalValue("containerId", String.class).orElse(null);
 
             AmqpClientOptions options = new AmqpClientOptions()
-                    .setUsername(username)
-                    .setPassword(password)
-                    .setHost(host)
-                    .setPort(port)
-                    .setContainerId(containerId)
-                    .setSsl(useSsl)
-                    .setReconnectAttempts(reconnectAttempts)
-                    .setReconnectInterval(reconnectInterval)
-                    .setConnectTimeout(connectTimeout);
+                .setUsername(username)
+                .setPassword(password)
+                .setHost(host)
+                .setPort(port)
+                .setContainerId(containerId)
+                .setSsl(useSsl)
+                .setReconnectAttempts(reconnectAttempts)
+                .setReconnectInterval(reconnectInterval)
+                .setConnectTimeout(connectTimeout);
             client = AmqpClient.create(new io.vertx.axle.core.Vertx(vertx.getDelegate()), options);
             return client;
         } catch (Exception e) {
@@ -204,15 +203,15 @@ public class AmqpConnector implements IncomingConnectorFactory, OutgoingConnecto
 
     private Flowable<? extends Message<?>> getStreamOfMessages(AmqpReceiver receiver) {
         return Flowable.defer(
-                () -> Flowable.fromPublisher(receiver.toPublisher()))
-                .map(m -> new AmqpMessage<>(m));
+            () -> Flowable.fromPublisher(receiver.toPublisher()))
+            .map(m -> new AmqpMessage<>(m));
     }
 
     private String getAddressOrFail(Config config) {
         return config.getOptionalValue("address", String.class)
-                .orElseGet(
-                        () -> config.getOptionalValue("channel-name", String.class)
-                                .orElseThrow(() -> new IllegalArgumentException("Address must be set")));
+            .orElseGet(
+                () -> config.getOptionalValue("channel-name", String.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Address must be set")));
     }
 
     @Override
@@ -222,14 +221,14 @@ public class AmqpConnector implements IncomingConnectorFactory, OutgoingConnecto
         boolean durable = config.getOptionalValue("durable", Boolean.class).orElse(true);
         boolean autoAck = config.getOptionalValue("auto-acknowledgement", Boolean.class).orElse(false);
         CompletionStage<AmqpReceiver> future = getClient(config)
-                .connect()
-                .thenCompose(connection -> connection.createReceiver(address, new AmqpReceiverOptions()
-                        .setAutoAcknowledgement(autoAck)
-                        .setDurable(durable)));
+            .connect()
+            .thenCompose(connection -> connection.createReceiver(address, new AmqpReceiverOptions()
+                .setAutoAcknowledgement(autoAck)
+                .setDurable(durable)));
 
         PublisherBuilder<? extends Message<?>> builder = ReactiveStreams
-                .fromCompletionStage(future)
-                .flatMapRsPublisher(this::getStreamOfMessages);
+            .fromCompletionStage(future)
+            .flatMapRsPublisher(this::getStreamOfMessages);
 
         if (broadcast) {
             return ReactiveStreams.fromPublisher(Flowable.fromPublisher(builder.buildRs()).publish().autoConnect());
@@ -245,7 +244,7 @@ public class AmqpConnector implements IncomingConnectorFactory, OutgoingConnecto
         long ttl = config.getOptionalValue("ttl", Long.class).orElse(0L);
 
         AtomicReference<AmqpSender> sender = new AtomicReference<>();
-        return ReactiveStreams.<Message<?>> builder().flatMapCompletionStage(message -> {
+        return ReactiveStreams.<Message<?>>builder().flatMapCompletionStage(message -> {
             AmqpSender as = sender.get();
 
             if (as == null) {
@@ -257,40 +256,51 @@ public class AmqpConnector implements IncomingConnectorFactory, OutgoingConnecto
                 }
 
                 return client
-                        .createSender(address)
-                        .thenApply(s -> {
-                            sender.set(s);
-                            return s;
-                        })
-                        .thenCompose(s -> {
-                            try {
-                                return send(s, message, durable, ttl);
-                            } catch (Exception e) {
-                                LOGGER.error("Unable to send the message", e);
-                                CompletableFuture<Message> future = new CompletableFuture<>();
-                                future.completeExceptionally(e);
-                                return future;
+                    .createSender(address)
+                    .thenApply(s -> {
+                        sender.set(s);
+                        return s;
+                    })
+                    .thenCompose(s -> {
+                        try {
+                            return send(s, message, durable, ttl);
+                        } catch (Exception e) {
+                            LOGGER.error("Unable to send the message", e);
+                            CompletableFuture<Message> future = new CompletableFuture<>();
+                            future.completeExceptionally(e);
+                            return future;
+                        }
+                    })
+                    .whenComplete((m, e) -> {
+                        if (e != null) {
+                            if (client == null) {
+                                LOGGER.error("The AMQP message has not been sent, the client is closed");
+                            } else {
+                                LOGGER.error("Unable to send the AMQP message", e);
                             }
-                        })
-                        .whenComplete((m, e) -> {
-                            if (e != null) {
-                                if (client == null) {
-                                    LOGGER.error("The AMQP message has not been sent, the client is closed");
-                                } else {
-                                    LOGGER.error("Unable to send the AMQP message", e);
-                                }
-                            }
-                        });
+                        }
+                    });
             } else {
                 return send(as, message, durable, ttl);
             }
         }).ignore();
     }
 
+    private String getActualAddress(Message message, io.vertx.axle.amqp.AmqpMessage amqp, AmqpSender sender) {
+        if (amqp.address() != null) {
+            return amqp.address();
+        }
+        String addressFromHeader = message.getHeaders().getAsString(AmqpHeaders.ADDRESS, null);
+        if (addressFromHeader != null) {
+            return addressFromHeader;
+        } else {
+            return sender.address();
+        }
+    }
+
     private CompletionStage send(AmqpSender sender, Message msg, boolean durable, long ttl) {
 
         io.vertx.axle.amqp.AmqpMessage amqp;
-
         if (msg instanceof AmqpMessage) {
             amqp = ((AmqpMessage) msg).getAmqpMessage();
         } else if (msg.getPayload() instanceof io.vertx.axle.amqp.AmqpMessage) {
@@ -298,24 +308,27 @@ public class AmqpConnector implements IncomingConnectorFactory, OutgoingConnecto
         } else if (msg.getPayload() instanceof io.vertx.amqp.AmqpMessage) {
             amqp = new io.vertx.axle.amqp.AmqpMessage((io.vertx.amqp.AmqpMessage) msg.getPayload());
         } else {
-            amqp = convertToAmqpMessage(msg.getPayload(), durable, ttl);
+            amqp = convertToAmqpMessage(msg, durable, ttl);
         }
 
-        String actualAddress = amqp.address() == null ? sender.address() : amqp.address();
+        String actualAddress = getActualAddress(msg, amqp, sender);
+
         if (client == null) {
             LOGGER.error("The AMQP message to address `{}` has not been sent, the client is closed",
-                    actualAddress);
+                actualAddress);
             return CompletableFuture.completedFuture(msg);
         }
 
         LOGGER.debug("Sending AMQP message to address `{}` ",
-                actualAddress);
+            actualAddress);
         return sender.sendWithAck(amqp)
-                .<Void> thenCompose(x -> msg.ack())
-                .thenApply(x -> msg);
+            .<Void>thenCompose(x -> msg.ack())
+            .thenApply(x -> msg);
     }
 
-    private io.vertx.axle.amqp.AmqpMessage convertToAmqpMessage(Object payload, boolean durable, long ttl) {
+    private io.vertx.axle.amqp.AmqpMessage convertToAmqpMessage(Message message, boolean durable, long ttl) {
+        Object payload = message.getPayload();
+        Headers headers = message.getHeaders();
         AmqpMessageBuilder builder = io.vertx.axle.amqp.AmqpMessage.create();
 
         if (durable) {
@@ -355,6 +368,12 @@ public class AmqpConnector implements IncomingConnectorFactory, OutgoingConnecto
             builder.withUuidAsBody((UUID) payload);
         } else {
             builder.withBody(payload.toString());
+        }
+
+        builder.address(headers.getAsString(AmqpHeaders.ADDRESS, null));
+        int i = headers.getAsInteger(AmqpHeaders.TTL, -1);
+        if (i != -1) {
+            builder.ttl(i);
         }
 
         return builder.build();
